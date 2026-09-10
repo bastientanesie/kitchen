@@ -3,11 +3,17 @@ import type Database from "better-sqlite3";
 import {
   generateRegistrationOptions,
   verifyRegistrationResponse,
+  generateAuthenticationOptions,
+  verifyAuthenticationResponse,
   type VerifiedRegistrationResponse,
+  type VerifiedAuthenticationResponse,
 } from "@simplewebauthn/server";
 import type {
   PublicKeyCredentialCreationOptionsJSON,
+  PublicKeyCredentialRequestOptionsJSON,
   RegistrationResponseJSON,
+  AuthenticationResponseJSON,
+  AuthenticatorTransportFuture,
 } from "@simplewebauthn/server";
 import { isoUint8Array, isoBase64URL } from "@simplewebauthn/server/helpers";
 import { AppError } from "../errors.js";
@@ -84,6 +90,31 @@ function resolveSessionUserId(db: Database.Database, sessionId: string): string 
   }
 
   return row.user_id;
+}
+
+export interface AuthenticatedSession {
+  userId: string;
+  householdId: string;
+}
+
+export function resolveSession(
+  db: Database.Database,
+  sessionId: string | undefined,
+): AuthenticatedSession {
+  if (!sessionId) {
+    throw new AppError(401, "UNAUTHENTICATED", "Session invalide ou expirée.");
+  }
+
+  const userId = resolveSessionUserId(db, sessionId);
+  const user = db.prepare("SELECT household_id FROM users WHERE id = ?").get(userId) as
+    | { household_id: string }
+    | undefined;
+
+  if (!user) {
+    throw new AppError(401, "UNAUTHENTICATED", "Session invalide ou expirée.");
+  }
+
+  return { userId, householdId: user.household_id };
 }
 
 function resolveEnrollmentUserId(db: Database.Database, auth: EnrollmentAuthorization): string {
@@ -259,16 +290,162 @@ export async function verifyRegistration(
     }
   })();
 
-  const sessionId = randomBytes(32).toString("base64url");
-  const sessionExpiresAt = new Date(now.getTime() + SESSION_TTL_MS);
-  db.prepare(
-    "INSERT INTO sessions (id, user_id, created_at, expires_at, last_seen_at) VALUES (?, ?, ?, ?, ?)",
-  ).run(sessionId, user.id, now.toISOString(), sessionExpiresAt.toISOString(), now.toISOString());
+  const session = createSession(db, user.id, now);
 
   return {
     userId: user.id,
     householdId: user.household_id,
-    sessionId,
-    sessionExpiresAt,
+    ...session,
+  };
+}
+
+function createSession(
+  db: Database.Database,
+  userId: string,
+  now: Date,
+): { sessionId: string; sessionExpiresAt: Date } {
+  const sessionId = randomBytes(32).toString("base64url");
+  const sessionExpiresAt = new Date(now.getTime() + SESSION_TTL_MS);
+  db.prepare(
+    "INSERT INTO sessions (id, user_id, created_at, expires_at, last_seen_at) VALUES (?, ?, ?, ?, ?)",
+  ).run(sessionId, userId, now.toISOString(), sessionExpiresAt.toISOString(), now.toISOString());
+  return { sessionId, sessionExpiresAt };
+}
+
+interface CredentialRow {
+  id: string;
+  user_id: string;
+  public_key: string;
+  counter: number;
+  transports: string | null;
+}
+
+export async function createAuthenticationOptions(
+  db: Database.Database,
+  rp: WebauthnRpConfig,
+): Promise<PublicKeyCredentialRequestOptionsJSON> {
+  const options = await generateAuthenticationOptions({
+    rpID: rp.rpId,
+    userVerification: "preferred",
+  });
+
+  const now = Date.now();
+  db.prepare(
+    "INSERT INTO webauthn_challenges (id, challenge, user_id, expires_at, created_at) VALUES (?, ?, ?, ?, ?)",
+  ).run(
+    generateId(),
+    options.challenge,
+    null,
+    new Date(now + CHALLENGE_TTL_MS).toISOString(),
+    new Date(now).toISOString(),
+  );
+
+  return options;
+}
+
+export interface VerifyAuthenticationResult {
+  userId: string;
+  householdId: string;
+  sessionId: string;
+  sessionExpiresAt: Date;
+}
+
+export async function verifyAuthentication(
+  db: Database.Database,
+  rp: WebauthnRpConfig,
+  input: { credential: AuthenticationResponseJSON },
+): Promise<VerifyAuthenticationResult> {
+  let clientChallenge: string;
+  try {
+    const clientData = JSON.parse(
+      isoBase64URL.toUTF8String(input.credential.response.clientDataJSON),
+    ) as { challenge: string };
+    clientChallenge = clientData.challenge;
+  } catch {
+    throw new AppError(
+      400,
+      "CHALLENGE_EXPIRED_OR_INVALID",
+      "Le challenge WebAuthn a expiré ou est invalide.",
+    );
+  }
+
+  const challengeRow = db
+    .prepare("SELECT id, challenge, expires_at FROM webauthn_challenges WHERE challenge = ?")
+    .get(clientChallenge) as { id: string; challenge: string; expires_at: string } | undefined;
+
+  if (!challengeRow || new Date(challengeRow.expires_at).getTime() < Date.now()) {
+    throw new AppError(
+      410,
+      "CHALLENGE_EXPIRED_OR_INVALID",
+      "Le challenge WebAuthn a expiré ou est invalide.",
+    );
+  }
+
+  const credentialRow = db
+    .prepare(
+      "SELECT id, user_id, public_key, counter, transports FROM credentials WHERE credential_id = ?",
+    )
+    .get(input.credential.id) as CredentialRow | undefined;
+
+  if (!credentialRow) {
+    throw new AppError(
+      404,
+      "CREDENTIAL_NOT_FOUND",
+      "Cette passkey n'est pas reconnue par le serveur.",
+    );
+  }
+
+  const user = db
+    .prepare("SELECT id, household_id, name FROM users WHERE id = ?")
+    .get(credentialRow.user_id) as UserRow | undefined;
+
+  if (!user) {
+    throw new AppError(404, "USER_NOT_FOUND", "Utilisateur introuvable.");
+  }
+
+  let verification: VerifiedAuthenticationResponse;
+  try {
+    verification = await verifyAuthenticationResponse({
+      response: input.credential,
+      expectedChallenge: challengeRow.challenge,
+      expectedOrigin: rp.origin,
+      expectedRPID: rp.rpId,
+      credential: {
+        id: input.credential.id,
+        publicKey: isoBase64URL.toBuffer(credentialRow.public_key),
+        counter: credentialRow.counter,
+        transports: credentialRow.transports
+          ? (JSON.parse(credentialRow.transports) as AuthenticatorTransportFuture[])
+          : undefined,
+      },
+    });
+  } catch {
+    throw new AppError(400, "AUTHENTICATION_FAILED", "La vérification de la passkey a échoué.");
+  }
+
+  if (!verification.verified) {
+    throw new AppError(400, "AUTHENTICATION_FAILED", "La vérification de la passkey a échoué.");
+  }
+
+  const now = new Date();
+
+  db.transaction(() => {
+    db.prepare(
+      "UPDATE credentials SET counter = ?, updated_at = ?, last_used_at = ? WHERE id = ?",
+    ).run(
+      verification.authenticationInfo.newCounter,
+      now.toISOString(),
+      now.toISOString(),
+      credentialRow.id,
+    );
+    db.prepare("DELETE FROM webauthn_challenges WHERE id = ?").run(challengeRow.id);
+  })();
+
+  const session = createSession(db, user.id, now);
+
+  return {
+    userId: user.id,
+    householdId: user.household_id,
+    ...session,
   };
 }

@@ -1,12 +1,19 @@
 import type { FastifyPluginAsync } from "fastify";
 import type { ZodTypeProvider } from "fastify-type-provider-zod";
-import type { RegistrationResponseJSON } from "@simplewebauthn/server";
+import type { RegistrationResponseJSON, AuthenticationResponseJSON } from "@simplewebauthn/server";
 import {
   registerOptionsBodySchema,
   registerVerifyBodySchema,
   registerVerifyResponseSchema,
+  loginVerifyBodySchema,
+  loginVerifyResponseSchema,
 } from "../../schemas/auth.js";
-import { createRegistrationOptions, verifyRegistration } from "../../services/auth.js";
+import {
+  createRegistrationOptions,
+  verifyRegistration,
+  createAuthenticationOptions,
+  verifyAuthentication,
+} from "../../services/auth.js";
 
 const webauthnRoutes: FastifyPluginAsync = async (fastify) => {
   const app = fastify.withTypeProvider<ZodTypeProvider>();
@@ -43,6 +50,35 @@ const webauthnRoutes: FastifyPluginAsync = async (fastify) => {
         sessionId: request.cookies.session,
         credential: body.credential as unknown as RegistrationResponseJSON,
         deviceName: body.deviceName,
+      });
+
+      reply.setCookie("session", result.sessionId, {
+        httpOnly: true,
+        sameSite: "lax",
+        secure: fastify.config.origin.startsWith("https://"),
+        path: "/",
+        expires: result.sessionExpiresAt,
+      });
+
+      reply.send({ userId: result.userId, householdId: result.householdId });
+    },
+  );
+
+  app.post("/webauthn/login/options", async () => {
+    return createAuthenticationOptions(fastify.db, rp());
+  });
+
+  app.post(
+    "/webauthn/login/verify",
+    {
+      schema: {
+        body: loginVerifyBodySchema,
+        response: { 200: loginVerifyResponseSchema },
+      },
+    },
+    async (request, reply) => {
+      const result = await verifyAuthentication(fastify.db, rp(), {
+        credential: request.body.credential as unknown as AuthenticationResponseJSON,
       });
 
       reply.setCookie("session", result.sessionId, {

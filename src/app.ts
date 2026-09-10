@@ -9,6 +9,7 @@ import { ZodError } from "zod";
 import { AppError, problemDetails } from "./errors.js";
 import { loadConfig, type AppConfig } from "./config.js";
 import dbPlugin from "./plugins/db.js";
+import authenticatePlugin from "./plugins/authenticate.js";
 import householdsRoutes from "./routes/households/index.js";
 import webauthnRoutes from "./routes/auth/webauthn.js";
 
@@ -71,6 +72,7 @@ export async function buildApp(
   });
 
   await fastify.register(dbPlugin);
+  await fastify.register(authenticatePlugin);
   await fastify.register(householdsRoutes, { prefix: "/households" });
   await fastify.register(webauthnRoutes, { prefix: "/auth" });
 
