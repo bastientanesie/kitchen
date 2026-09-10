@@ -18,6 +18,7 @@ import type {
 import { isoUint8Array, isoBase64URL } from "@simplewebauthn/server/helpers";
 import { AppError } from "../errors.js";
 import { generateId } from "./uuid.js";
+import { resolveInvitationUserId } from "./invitations.js";
 
 const CHALLENGE_TTL_MS = 2 * 60 * 1000;
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
@@ -38,6 +39,7 @@ export interface WebauthnRpConfig {
 export interface EnrollmentAuthorization {
   enrollmentToken?: string;
   sessionId?: string;
+  invitationToken?: string;
 }
 
 function hashEnrollmentToken(token: string): string {
@@ -117,9 +119,16 @@ export function resolveSession(
   return { userId, householdId: user.household_id };
 }
 
-function resolveEnrollmentUserId(db: Database.Database, auth: EnrollmentAuthorization): string {
+function resolveEnrollmentUserId(
+  db: Database.Database,
+  auth: EnrollmentAuthorization,
+  displayName?: string,
+): string {
   if (auth.sessionId) {
     return resolveSessionUserId(db, auth.sessionId);
+  }
+  if (auth.invitationToken) {
+    return resolveInvitationUserId(db, auth.invitationToken, displayName);
   }
   if (auth.enrollmentToken) {
     return peekEnrollmentToken(db, auth.enrollmentToken);
@@ -136,7 +145,7 @@ export async function createRegistrationOptions(
   rp: WebauthnRpConfig,
   input: EnrollmentAuthorization & { displayName: string },
 ): Promise<PublicKeyCredentialCreationOptionsJSON> {
-  const userId = resolveEnrollmentUserId(db, input);
+  const userId = resolveEnrollmentUserId(db, input, input.displayName);
   const user = db
     .prepare("SELECT id, household_id, name FROM users WHERE id = ?")
     .get(userId) as UserRow | undefined;

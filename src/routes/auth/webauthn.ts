@@ -29,6 +29,7 @@ const webauthnRoutes: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       return createRegistrationOptions(fastify.db, rp(), {
         enrollmentToken: request.body.enrollmentToken,
+        invitationToken: request.body.invitationToken,
         sessionId: request.cookies.session,
         displayName: request.body.displayName,
       });
@@ -47,6 +48,7 @@ const webauthnRoutes: FastifyPluginAsync = async (fastify) => {
       const body = request.body;
       const result = await verifyRegistration(fastify.db, rp(), {
         enrollmentToken: body.enrollmentToken,
+        invitationToken: body.invitationToken,
         sessionId: request.cookies.session,
         credential: body.credential as unknown as RegistrationResponseJSON,
         deviceName: body.deviceName,

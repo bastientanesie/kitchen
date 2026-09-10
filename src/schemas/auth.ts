@@ -2,11 +2,13 @@ import { z } from "zod";
 
 export const registerOptionsBodySchema = z.object({
   enrollmentToken: z.string().min(1).optional(),
+  invitationToken: z.string().min(1).optional(),
   displayName: z.string().trim().min(1),
 });
 
 export const registerVerifyBodySchema = z.object({
   enrollmentToken: z.string().min(1).optional(),
+  invitationToken: z.string().min(1).optional(),
   credential: z.object({
     id: z.string(),
     rawId: z.string(),
