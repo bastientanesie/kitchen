@@ -8,6 +8,7 @@ export const createHouseholdBodySchema = z.object({
 export const createHouseholdResponseSchema = z.object({
   userId: z.string(),
   householdId: z.string(),
+  enrollmentToken: z.string(),
 });
 
 export type CreateHouseholdBody = z.infer<typeof createHouseholdBodySchema>;

@@ -1,3 +1,4 @@
+import { createHash, randomBytes } from "node:crypto";
 import type Database from "better-sqlite3";
 import {
   generateRegistrationOptions,
@@ -14,6 +15,7 @@ import { generateId } from "./uuid.js";
 
 const CHALLENGE_TTL_MS = 2 * 60 * 1000;
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+const ENROLLMENT_TOKEN_TTL_MS = 10 * 60 * 1000;
 
 interface UserRow {
   id: string;
@@ -27,14 +29,86 @@ export interface WebauthnRpConfig {
   origin: string;
 }
 
+export interface EnrollmentAuthorization {
+  enrollmentToken?: string;
+  sessionId?: string;
+}
+
+function hashEnrollmentToken(token: string): string {
+  return createHash("sha256").update(token).digest("hex");
+}
+
+export function createEnrollmentToken(db: Database.Database, userId: string): string {
+  const token = randomBytes(16).toString("base64url");
+  const now = new Date();
+  db.prepare(
+    "INSERT INTO enrollment_tokens (token_hash, user_id, expires_at, created_at) VALUES (?, ?, ?, ?)",
+  ).run(
+    hashEnrollmentToken(token),
+    userId,
+    new Date(now.getTime() + ENROLLMENT_TOKEN_TTL_MS).toISOString(),
+    now.toISOString(),
+  );
+  return token;
+}
+
+function peekEnrollmentToken(db: Database.Database, token: string): string {
+  const row = db
+    .prepare("SELECT user_id, expires_at FROM enrollment_tokens WHERE token_hash = ?")
+    .get(hashEnrollmentToken(token)) as { user_id: string; expires_at: string } | undefined;
+
+  if (!row || new Date(row.expires_at).getTime() < Date.now()) {
+    throw new AppError(
+      401,
+      "ENROLLMENT_TOKEN_INVALID",
+      "Le jeton d'enrôlement est invalide ou a expiré.",
+    );
+  }
+
+  return row.user_id;
+}
+
+function consumeEnrollmentToken(db: Database.Database, token: string): string {
+  const userId = peekEnrollmentToken(db, token);
+  db.prepare("DELETE FROM enrollment_tokens WHERE token_hash = ?").run(hashEnrollmentToken(token));
+  return userId;
+}
+
+function resolveSessionUserId(db: Database.Database, sessionId: string): string {
+  const row = db
+    .prepare("SELECT user_id, expires_at FROM sessions WHERE id = ?")
+    .get(sessionId) as { user_id: string; expires_at: string } | undefined;
+
+  if (!row || new Date(row.expires_at).getTime() < Date.now()) {
+    throw new AppError(401, "UNAUTHENTICATED", "Session invalide ou expirée.");
+  }
+
+  return row.user_id;
+}
+
+function resolveEnrollmentUserId(db: Database.Database, auth: EnrollmentAuthorization): string {
+  if (auth.sessionId) {
+    return resolveSessionUserId(db, auth.sessionId);
+  }
+  if (auth.enrollmentToken) {
+    return peekEnrollmentToken(db, auth.enrollmentToken);
+  }
+  throw new AppError(
+    401,
+    "ENROLLMENT_UNAUTHORIZED",
+    "Un jeton d'enrôlement ou une session authentifiée est requis.",
+  );
+}
+
 export async function createRegistrationOptions(
   db: Database.Database,
   rp: WebauthnRpConfig,
-  input: { userId: string; displayName: string },
+  input: EnrollmentAuthorization & { displayName: string },
 ): Promise<PublicKeyCredentialCreationOptionsJSON> {
+  const userId = resolveEnrollmentUserId(db, input);
   const user = db
     .prepare("SELECT id, household_id, name FROM users WHERE id = ?")
-    .get(input.userId) as UserRow | undefined;
+    .get(userId) as UserRow | undefined;
 
   if (!user) {
     throw new AppError(404, "USER_NOT_FOUND", "Utilisateur introuvable.");
@@ -76,8 +150,10 @@ export interface VerifyRegistrationResult {
 export async function verifyRegistration(
   db: Database.Database,
   rp: WebauthnRpConfig,
-  input: { credential: RegistrationResponseJSON; deviceName: string },
+  input: EnrollmentAuthorization & { credential: RegistrationResponseJSON; deviceName: string },
 ): Promise<VerifyRegistrationResult> {
+  const authorizedUserId = resolveEnrollmentUserId(db, input);
+
   let clientChallenge: string;
   try {
     const clientData = JSON.parse(
@@ -103,7 +179,8 @@ export async function verifyRegistration(
   if (
     !challengeRow ||
     !challengeRow.user_id ||
-    new Date(challengeRow.expires_at).getTime() < Date.now()
+    new Date(challengeRow.expires_at).getTime() < Date.now() ||
+    challengeRow.user_id !== authorizedUserId
   ) {
     throw new AppError(
       410,
@@ -176,9 +253,13 @@ export async function verifyRegistration(
     );
 
     db.prepare("DELETE FROM webauthn_challenges WHERE id = ?").run(challengeRow.id);
+
+    if (input.enrollmentToken) {
+      consumeEnrollmentToken(db, input.enrollmentToken);
+    }
   })();
 
-  const sessionId = generateId();
+  const sessionId = randomBytes(32).toString("base64url");
   const sessionExpiresAt = new Date(now.getTime() + SESSION_TTL_MS);
   db.prepare(
     "INSERT INTO sessions (id, user_id, created_at, expires_at, last_seen_at) VALUES (?, ?, ?, ?, ?)",

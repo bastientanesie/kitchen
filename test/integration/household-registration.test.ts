@@ -43,14 +43,15 @@ describe("Household creation + passkey registration (issue #28)", () => {
     });
 
     expect(householdResponse.statusCode).toBe(201);
-    const { userId, householdId } = householdResponse.json();
+    const { userId, householdId, enrollmentToken } = householdResponse.json();
     expect(userId).toBeTruthy();
     expect(householdId).toBeTruthy();
+    expect(enrollmentToken).toBeTruthy();
 
     const optionsResponse = await app.inject({
       method: "POST",
       url: "/auth/webauthn/register/options",
-      payload: { userId, displayName: "Alex" },
+      payload: { enrollmentToken, displayName: "Alex" },
     });
 
     expect(optionsResponse.statusCode).toBe(200);
@@ -70,6 +71,7 @@ describe("Household creation + passkey registration (issue #28)", () => {
       method: "POST",
       url: "/auth/webauthn/register/verify",
       payload: {
+        enrollmentToken,
         credential: {
           id: "mock-credential-id",
           rawId: "mock-credential-id",
@@ -125,12 +127,12 @@ describe("Household creation + passkey registration (issue #28)", () => {
       url: "/households",
       payload: { name: "Foyer Martin", displayName: "Sam" },
     });
-    const { userId } = householdResponse.json();
+    const { enrollmentToken } = householdResponse.json();
 
     await app.inject({
       method: "POST",
       url: "/auth/webauthn/register/options",
-      payload: { userId, displayName: "Sam" },
+      payload: { enrollmentToken, displayName: "Sam" },
     });
 
     const clientDataJSON = isoBase64URL.fromUTF8String(
@@ -145,6 +147,7 @@ describe("Household creation + passkey registration (issue #28)", () => {
       method: "POST",
       url: "/auth/webauthn/register/verify",
       payload: {
+        enrollmentToken,
         credential: {
           id: "another-credential-id",
           rawId: "another-credential-id",
@@ -161,5 +164,55 @@ describe("Household creation + passkey registration (issue #28)", () => {
 
     expect(verifyResponse.statusCode).toBe(410);
     expect(verifyResponse.json().code).toBe("CHALLENGE_EXPIRED_OR_INVALID");
+  });
+
+  it("rejects passkey registration without a valid enrollment token or session", async () => {
+    const householdResponse = await app.inject({
+      method: "POST",
+      url: "/households",
+      payload: { name: "Foyer Martin", displayName: "Sam" },
+    });
+    const { userId } = householdResponse.json();
+
+    const optionsResponse = await app.inject({
+      method: "POST",
+      url: "/auth/webauthn/register/options",
+      payload: { displayName: "Sam" },
+    });
+
+    expect(optionsResponse.statusCode).toBe(401);
+    expect(optionsResponse.json().code).toBe("ENROLLMENT_UNAUTHORIZED");
+
+    const verifyResponse = await app.inject({
+      method: "POST",
+      url: "/auth/webauthn/register/verify",
+      payload: {
+        credential: {
+          id: "unauthorized-credential-id",
+          rawId: "unauthorized-credential-id",
+          type: "public-key",
+          clientExtensionResults: {},
+          response: {
+            clientDataJSON: isoBase64URL.fromUTF8String(
+              JSON.stringify({
+                type: "webauthn.create",
+                challenge: "irrelevant",
+                origin: app.config.origin,
+              }),
+            ),
+            attestationObject: isoBase64URL.fromUTF8String("attestation"),
+          },
+        },
+        deviceName: "PC inconnu",
+      },
+    });
+
+    expect(verifyResponse.statusCode).toBe(401);
+    expect(verifyResponse.json().code).toBe("ENROLLMENT_UNAUTHORIZED");
+
+    const credentialCount = app.db
+      .prepare("SELECT COUNT(*) as count FROM credentials WHERE user_id = ?")
+      .get(userId) as { count: number };
+    expect(credentialCount.count).toBe(0);
   });
 });

@@ -20,7 +20,11 @@ const webauthnRoutes: FastifyPluginAsync = async (fastify) => {
     "/webauthn/register/options",
     { schema: { body: registerOptionsBodySchema } },
     async (request) => {
-      return createRegistrationOptions(fastify.db, rp(), request.body);
+      return createRegistrationOptions(fastify.db, rp(), {
+        enrollmentToken: request.body.enrollmentToken,
+        sessionId: request.cookies.session,
+        displayName: request.body.displayName,
+      });
     },
   );
 
@@ -35,6 +39,8 @@ const webauthnRoutes: FastifyPluginAsync = async (fastify) => {
     async (request, reply) => {
       const body = request.body;
       const result = await verifyRegistration(fastify.db, rp(), {
+        enrollmentToken: body.enrollmentToken,
+        sessionId: request.cookies.session,
         credential: body.credential as unknown as RegistrationResponseJSON,
         deviceName: body.deviceName,
       });
@@ -42,6 +48,7 @@ const webauthnRoutes: FastifyPluginAsync = async (fastify) => {
       reply.setCookie("session", result.sessionId, {
         httpOnly: true,
         sameSite: "lax",
+        secure: fastify.config.origin.startsWith("https://"),
         path: "/",
         expires: result.sessionExpiresAt,
       });

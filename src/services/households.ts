@@ -1,5 +1,6 @@
 import type Database from "better-sqlite3";
 import { generateId } from "./uuid.js";
+import { createEnrollmentToken } from "./auth.js";
 
 export interface CreateHouseholdInput {
   name: string;
@@ -9,6 +10,7 @@ export interface CreateHouseholdInput {
 export interface CreateHouseholdResult {
   householdId: string;
   userId: string;
+  enrollmentToken: string;
 }
 
 export function createHousehold(
@@ -26,10 +28,12 @@ export function createHousehold(
     "INSERT INTO users (id, household_id, name, role, created_at, updated_at) VALUES (?, ?, ?, 'owner', ?, ?)",
   );
 
+  let enrollmentToken = "";
   db.transaction(() => {
     insertHousehold.run(householdId, input.name, now, now);
     insertUser.run(userId, householdId, input.displayName, now, now);
+    enrollmentToken = createEnrollmentToken(db, userId);
   })();
 
-  return { householdId, userId };
+  return { householdId, userId, enrollmentToken };
 }
