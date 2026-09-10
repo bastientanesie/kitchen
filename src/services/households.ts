@@ -1,0 +1,35 @@
+import type Database from "better-sqlite3";
+import { generateId } from "./uuid.js";
+
+export interface CreateHouseholdInput {
+  name: string;
+  displayName: string;
+}
+
+export interface CreateHouseholdResult {
+  householdId: string;
+  userId: string;
+}
+
+export function createHousehold(
+  db: Database.Database,
+  input: CreateHouseholdInput,
+): CreateHouseholdResult {
+  const householdId = generateId();
+  const userId = generateId();
+  const now = new Date().toISOString();
+
+  const insertHousehold = db.prepare(
+    "INSERT INTO households (id, name, preferences, created_at, updated_at) VALUES (?, ?, NULL, ?, ?)",
+  );
+  const insertUser = db.prepare(
+    "INSERT INTO users (id, household_id, name, role, created_at, updated_at) VALUES (?, ?, ?, 'owner', ?, ?)",
+  );
+
+  db.transaction(() => {
+    insertHousehold.run(householdId, input.name, now, now);
+    insertUser.run(userId, householdId, input.displayName, now, now);
+  })();
+
+  return { householdId, userId };
+}
