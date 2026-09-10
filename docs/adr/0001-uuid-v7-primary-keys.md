@@ -1,0 +1,3 @@
+# Clés primaires en UUID v7 plutôt qu'INTEGER AUTOINCREMENT
+
+Le PRD laissait le choix ouvert ("UUID / INTEGER PK"). On retient UUID v7 (TEXT, généré côté application) sur toutes les tables du schéma SQLite, plutôt qu'`INTEGER PRIMARY KEY AUTOINCREMENT`. UUID v7 conserve l'ordonnancement temporel d'un entier auto-incrémenté (bon pour l'indexation SQLite) tout en restant opaque si un id venait à être exposé côté client, et évite une migration de type de clé si ce besoin apparaît plus tard. Changer de stratégie de PK après coup toucherait toutes les tables et leurs FK, d'où l'ADR malgré l'absence de contrainte de sécurité forte dans ce contexte familial fermé.
