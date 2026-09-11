@@ -1,11 +1,16 @@
-import { ThemeToggle } from '@/components/theme-toggle'
+import { Route, Routes } from 'react-router-dom'
+
+import { CreateHouseholdPage } from '@/routes/create-household-page'
+import { LandingPage } from '@/routes/landing-page'
+import { LoginPage } from '@/routes/login-page'
 
 function App() {
   return (
-    <main className="mx-auto flex min-h-svh max-w-md flex-col items-start gap-6 p-6">
-      <h1 className="font-display text-2xl font-bold">Kitchen</h1>
-      <ThemeToggle />
-    </main>
+    <Routes>
+      <Route path="/" element={<LandingPage />} />
+      <Route path="/connexion" element={<LoginPage />} />
+      <Route path="/foyer/creer" element={<CreateHouseholdPage />} />
+    </Routes>
   )
 }
 

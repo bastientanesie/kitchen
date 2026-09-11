@@ -1,14 +1,17 @@
 import { render, screen } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
 
 import App from './App'
 import { ThemeProvider } from './components/theme-provider'
 
 describe('App', () => {
-  it('affiche le titre Kitchen', () => {
+  it('affiche la landing page à la racine', () => {
     render(
       <ThemeProvider>
-        <App />
+        <MemoryRouter initialEntries={['/']}>
+          <App />
+        </MemoryRouter>
       </ThemeProvider>,
     )
 
