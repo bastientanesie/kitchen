@@ -19,6 +19,7 @@ import { isoUint8Array, isoBase64URL } from "@simplewebauthn/server/helpers";
 import { AppError } from "../errors.js";
 import { generateId } from "./uuid.js";
 import { resolveInvitationUserId } from "./invitations.js";
+import { peekDeviceLinkUserId, consumeDeviceLinkToken } from "./device-link.js";
 
 const CHALLENGE_TTL_MS = 2 * 60 * 1000;
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
@@ -40,6 +41,7 @@ export interface EnrollmentAuthorization {
   enrollmentToken?: string;
   sessionId?: string;
   invitationToken?: string;
+  deviceLinkToken?: string;
 }
 
 function hashEnrollmentToken(token: string): string {
@@ -132,6 +134,9 @@ function resolveEnrollmentUserId(
   }
   if (auth.enrollmentToken) {
     return peekEnrollmentToken(db, auth.enrollmentToken);
+  }
+  if (auth.deviceLinkToken) {
+    return peekDeviceLinkUserId(db, auth.deviceLinkToken);
   }
   throw new AppError(
     401,
@@ -296,6 +301,10 @@ export async function verifyRegistration(
 
     if (input.enrollmentToken) {
       consumeEnrollmentToken(db, input.enrollmentToken);
+    }
+
+    if (input.deviceLinkToken) {
+      consumeDeviceLinkToken(db, input.deviceLinkToken, input.deviceName);
     }
   })();
 

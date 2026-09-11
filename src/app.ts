@@ -13,6 +13,7 @@ import authenticatePlugin from "./plugins/authenticate.js";
 import healthRoute from "./routes/health.js";
 import householdsRoutes from "./routes/households/index.js";
 import webauthnRoutes from "./routes/auth/webauthn.js";
+import devicePairingRoutes from "./routes/device-pairing/index.js";
 
 declare module "fastify" {
   interface FastifyInstance {
@@ -77,6 +78,7 @@ export async function buildApp(
   await fastify.register(healthRoute);
   await fastify.register(householdsRoutes, { prefix: "/households" });
   await fastify.register(webauthnRoutes, { prefix: "/auth" });
+  await fastify.register(devicePairingRoutes, { prefix: "/device-pairing" });
 
   return fastify;
 }
