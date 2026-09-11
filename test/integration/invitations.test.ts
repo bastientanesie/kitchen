@@ -216,4 +216,40 @@ describe("Invitations (issue #30)", () => {
     expect(response.statusCode).toBe(401);
     expect(response.json().code).toBe("UNAUTHENTICATED");
   });
+
+  it("opportunistically purges expired invitations and orphaned users when a new invitation is created (issue #32)", async () => {
+    const { sessionId, householdId } = await registerHouseholdWithPasskey(app);
+
+    app.db
+      .prepare(
+        "INSERT INTO invitations (token_hash, household_id, expires_at, consumed_at, consumed_by_user_id, created_at) VALUES ('stale-token', ?, ?, NULL, NULL, ?)",
+      )
+      .run(householdId, new Date(Date.now() - 1000).toISOString(), new Date().toISOString());
+
+    const orphanUserId = "orphan-user-id";
+    app.db
+      .prepare(
+        "INSERT INTO users (id, household_id, name, role, created_at, updated_at) VALUES (?, ?, 'Ghost', 'member', ?, ?)",
+      )
+      .run(
+        orphanUserId,
+        householdId,
+        new Date(Date.now() - 61 * 60 * 1000).toISOString(),
+        new Date(Date.now() - 61 * 60 * 1000).toISOString(),
+      );
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/households/invitations",
+      cookies: { session: sessionId },
+    });
+    expect(response.statusCode).toBe(201);
+
+    expect(
+      app.db.prepare("SELECT token_hash FROM invitations WHERE token_hash = 'stale-token'").get(),
+    ).toBeUndefined();
+    expect(
+      app.db.prepare("SELECT id FROM users WHERE id = ?").get(orphanUserId),
+    ).toBeUndefined();
+  });
 });

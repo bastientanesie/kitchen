@@ -290,4 +290,24 @@ describe("Device pairing (issue #31)", () => {
     ).count;
     expect(count).toBe(2);
   });
+
+  it("opportunistically purges expired device-link tokens when a new one is created (issue #32)", async () => {
+    const { sessionId, userId } = await registerHouseholdWithPasskey(app);
+
+    app.db
+      .prepare(
+        "INSERT INTO device_link_tokens (token_hash, user_id, expires_at, used_at, device_name, created_at) VALUES ('stale', ?, ?, NULL, NULL, ?)",
+      )
+      .run(userId, new Date(Date.now() - 1000).toISOString(), new Date().toISOString());
+
+    await app.inject({
+      method: "POST",
+      url: "/device-pairing/tokens",
+      cookies: { session: sessionId },
+    });
+
+    expect(
+      app.db.prepare("SELECT token_hash FROM device_link_tokens WHERE token_hash = 'stale'").get(),
+    ).toBeUndefined();
+  });
 });

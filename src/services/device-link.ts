@@ -1,6 +1,7 @@
 import { createHash, randomInt } from "node:crypto";
 import type Database from "better-sqlite3";
 import { AppError } from "../errors.js";
+import { purgeExpired } from "./purge.js";
 
 const DEVICE_LINK_TOKEN_TTL_MS = 5 * 60 * 1000;
 const CODE_LENGTH = 8;
@@ -43,6 +44,8 @@ export function createDeviceLinkToken(
   db: Database.Database,
   userId: string,
 ): CreateDeviceLinkTokenResult {
+  purgeExpired(db);
+
   const code = generateCode();
   const now = new Date();
   const expiresAt = new Date(now.getTime() + DEVICE_LINK_TOKEN_TTL_MS);

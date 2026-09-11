@@ -2,6 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import type Database from "better-sqlite3";
 import { AppError } from "../errors.js";
 import { generateId } from "./uuid.js";
+import { purgeExpired } from "./purge.js";
 
 const INVITATION_TOKEN_BYTES = 24;
 const INVITATION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -34,6 +35,8 @@ export function createInvitation(
   db: Database.Database,
   householdId: string,
 ): CreateInvitationResult {
+  purgeExpired(db);
+
   const token = randomBytes(INVITATION_TOKEN_BYTES).toString("base64url");
   const now = new Date();
   const expiresAt = new Date(now.getTime() + INVITATION_TTL_MS);
@@ -68,9 +71,11 @@ export function peekInvitation(db: Database.Database, token: string): Invitation
     name: string;
   };
   const memberCount = (
-    db.prepare("SELECT COUNT(*) as count FROM users WHERE household_id = ?").get(row.household_id) as {
-      count: number;
-    }
+    db
+      .prepare(
+        "SELECT COUNT(*) as count FROM users WHERE household_id = ? AND id IN (SELECT user_id FROM credentials)",
+      )
+      .get(row.household_id) as { count: number }
   ).count;
 
   return { householdName: household.name, memberCount };

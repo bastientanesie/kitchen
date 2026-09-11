@@ -20,6 +20,7 @@ import { AppError } from "../errors.js";
 import { generateId } from "./uuid.js";
 import { resolveInvitationUserId } from "./invitations.js";
 import { peekDeviceLinkUserId, consumeDeviceLinkToken } from "./device-link.js";
+import { purgeExpired } from "./purge.js";
 
 const CHALLENGE_TTL_MS = 2 * 60 * 1000;
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
@@ -150,6 +151,8 @@ export async function createRegistrationOptions(
   rp: WebauthnRpConfig,
   input: EnrollmentAuthorization & { displayName: string },
 ): Promise<PublicKeyCredentialCreationOptionsJSON> {
+  purgeExpired(db);
+
   const userId = resolveEnrollmentUserId(db, input, input.displayName);
   const user = db
     .prepare("SELECT id, household_id, name FROM users WHERE id = ?")
@@ -342,6 +345,8 @@ export async function createAuthenticationOptions(
   db: Database.Database,
   rp: WebauthnRpConfig,
 ): Promise<PublicKeyCredentialRequestOptionsJSON> {
+  purgeExpired(db);
+
   const options = await generateAuthenticationOptions({
     rpID: rp.rpId,
     userVerification: "preferred",
