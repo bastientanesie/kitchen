@@ -1,6 +1,7 @@
 import type Database from "better-sqlite3";
 import { generateId } from "./uuid.js";
 import { createEnrollmentToken } from "./auth.js";
+import { seedDefaultCookingModes } from "./cooking-modes.js";
 
 export interface CreateHouseholdInput {
   name: string;
@@ -32,6 +33,7 @@ export function createHousehold(
   db.transaction(() => {
     insertHousehold.run(householdId, input.name, now, now);
     insertUser.run(userId, householdId, input.displayName, now, now);
+    seedDefaultCookingModes(db, householdId);
     enrollmentToken = createEnrollmentToken(db, userId);
   })();
 
