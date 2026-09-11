@@ -30,7 +30,7 @@ function toIngredient(row: IngredientRow): Ingredient {
   };
 }
 
-function normalizeName(name: string): string {
+export function normalizeName(name: string): string {
   return name.trim().toLowerCase();
 }
 

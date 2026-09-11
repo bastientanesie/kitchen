@@ -5,6 +5,7 @@ export interface AppConfig {
   rpName: string;
   origin: string;
   databasePath: string;
+  geminiApiKey: string;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
@@ -15,5 +16,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     rpName: env.RP_NAME ?? "Kitchen",
     origin: env.ORIGIN ?? "http://localhost:3000",
     databasePath: env.DATABASE_PATH ?? "./data/kitchen.db",
+    geminiApiKey: env.GEMINI_API_KEY ?? "",
   };
 }

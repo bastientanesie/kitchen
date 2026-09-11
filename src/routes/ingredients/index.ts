@@ -6,6 +6,8 @@ import {
   ingredientParamsSchema,
   ingredientSchema,
   listIngredientsResponseSchema,
+  parseTranscriptBodySchema,
+  parseTranscriptResponseSchema,
   patchIngredientBodySchema,
 } from "../../schemas/ingredients.js";
 import {
@@ -14,6 +16,7 @@ import {
   listIngredients,
   updateIngredient,
 } from "../../services/ingredients.js";
+import { parseTranscript } from "../../services/ingredients-parse.js";
 
 const ingredientsRoutes: FastifyPluginAsync = async (fastify) => {
   const app = fastify.withTypeProvider<ZodTypeProvider>();
@@ -63,6 +66,26 @@ const ingredientsRoutes: FastifyPluginAsync = async (fastify) => {
         request.params.id,
         request.body,
       );
+    },
+  );
+
+  app.post(
+    "/parse",
+    {
+      preHandler: fastify.authenticate,
+      schema: {
+        body: parseTranscriptBodySchema,
+        response: { 200: parseTranscriptResponseSchema },
+      },
+    },
+    async (request) => {
+      const ingredients = await parseTranscript(
+        fastify.db,
+        request.auth!.householdId,
+        request.body.transcript,
+        fastify.config.geminiApiKey,
+      );
+      return { ingredients };
     },
   );
 

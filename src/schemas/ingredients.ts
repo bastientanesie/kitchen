@@ -33,6 +33,22 @@ export const patchIngredientBodySchema = z
   })
   .partial();
 
+export const parseTranscriptBodySchema = z.object({
+  transcript: z.string().trim().min(1),
+});
+
+export const parsedIngredientSchema = z.object({
+  name: z.string(),
+  present: z.boolean(),
+  isNew: z.boolean(),
+});
+
+export const parseTranscriptResponseSchema = z.object({
+  ingredients: z.array(parsedIngredientSchema),
+});
+
 export type Storage = z.infer<typeof storageSchema>;
 export type CreateIngredientInput = z.infer<typeof createIngredientSchema>;
 export type PatchIngredientBody = z.infer<typeof patchIngredientBodySchema>;
+export type ParseTranscriptBody = z.infer<typeof parseTranscriptBodySchema>;
+export type ParsedIngredient = z.infer<typeof parsedIngredientSchema>;

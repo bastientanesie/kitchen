@@ -46,7 +46,7 @@ export async function buildApp(
       reply
         .status(error.status)
         .type("application/problem+json")
-        .send(problemDetails(error, request.url));
+        .send({ ...problemDetails(error, request.url), ...error.extra });
       return;
     }
 
