@@ -1,5 +1,6 @@
 import { Route, Routes } from 'react-router-dom'
 
+import { AppHomePage } from '@/routes/app-home-page'
 import { CreateHouseholdPage } from '@/routes/create-household-page'
 import { LandingPage } from '@/routes/landing-page'
 import { LoginPage } from '@/routes/login-page'
@@ -10,6 +11,7 @@ function App() {
       <Route path="/" element={<LandingPage />} />
       <Route path="/connexion" element={<LoginPage />} />
       <Route path="/foyer/creer" element={<CreateHouseholdPage />} />
+      <Route path="/app" element={<AppHomePage />} />
     </Routes>
   )
 }
