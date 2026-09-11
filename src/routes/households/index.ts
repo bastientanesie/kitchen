@@ -4,10 +4,16 @@ import {
   createHouseholdBodySchema,
   createHouseholdResponseSchema,
   createInvitationResponseSchema,
+  householdPreferencesResponseSchema,
   invitationParamsSchema,
   invitationPreviewResponseSchema,
+  updateHouseholdPreferencesBodySchema,
 } from "../../schemas/households.js";
-import { createHousehold } from "../../services/households.js";
+import {
+  createHousehold,
+  getHouseholdPreferences,
+  updateHouseholdPreferences,
+} from "../../services/households.js";
 import { createInvitation, peekInvitation } from "../../services/invitations.js";
 
 const householdsRoutes: FastifyPluginAsync = async (fastify) => {
@@ -51,6 +57,38 @@ const householdsRoutes: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       return peekInvitation(fastify.db, request.params.token);
+    },
+  );
+
+  app.get(
+    "/me/preferences",
+    {
+      preHandler: fastify.authenticate,
+      schema: {
+        response: { 200: householdPreferencesResponseSchema },
+      },
+    },
+    async (request) => {
+      return { preferences: getHouseholdPreferences(fastify.db, request.auth!.householdId) };
+    },
+  );
+
+  app.patch(
+    "/me/preferences",
+    {
+      preHandler: fastify.authenticate,
+      schema: {
+        body: updateHouseholdPreferencesBodySchema,
+        response: { 200: householdPreferencesResponseSchema },
+      },
+    },
+    async (request) => {
+      const preferences = updateHouseholdPreferences(
+        fastify.db,
+        request.auth!.householdId,
+        request.body.preferences,
+      );
+      return { preferences };
     },
   );
 };

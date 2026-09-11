@@ -37,3 +37,31 @@ export function createHousehold(
 
   return { householdId, userId, enrollmentToken };
 }
+
+export function getHouseholdPreferences(
+  db: Database.Database,
+  householdId: string,
+): string | null {
+  const row = db
+    .prepare("SELECT preferences FROM households WHERE id = ?")
+    .get(householdId) as { preferences: string | null } | undefined;
+
+  return row?.preferences ?? null;
+}
+
+export function updateHouseholdPreferences(
+  db: Database.Database,
+  householdId: string,
+  preferences: string,
+): string | null {
+  const normalized = preferences === "" ? null : preferences;
+  const now = new Date().toISOString();
+
+  db.prepare("UPDATE households SET preferences = ?, updated_at = ? WHERE id = ?").run(
+    normalized,
+    now,
+    householdId,
+  );
+
+  return normalized;
+}

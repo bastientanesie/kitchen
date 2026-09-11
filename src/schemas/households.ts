@@ -26,3 +26,15 @@ export const invitationPreviewResponseSchema = z.object({
   householdName: z.string(),
   memberCount: z.number(),
 });
+
+export const updateHouseholdPreferencesBodySchema = z.object({
+  preferences: z.string(),
+});
+
+export type UpdateHouseholdPreferencesBody = z.infer<
+  typeof updateHouseholdPreferencesBodySchema
+>;
+
+export const householdPreferencesResponseSchema = z.object({
+  preferences: z.string().nullable(),
+});
