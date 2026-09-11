@@ -4,6 +4,8 @@ import {
   createHouseholdBodySchema,
   createHouseholdResponseSchema,
   createInvitationResponseSchema,
+  createOwnHouseholdBodySchema,
+  createOwnHouseholdResponseSchema,
   householdPreferencesResponseSchema,
   invitationParamsSchema,
   invitationPreviewResponseSchema,
@@ -11,6 +13,7 @@ import {
 } from "../../schemas/households.js";
 import {
   createHousehold,
+  createHouseholdForUser,
   getHouseholdPreferences,
   updateHouseholdPreferences,
 } from "../../services/households.js";
@@ -30,6 +33,25 @@ const householdsRoutes: FastifyPluginAsync = async (fastify) => {
     async (request, reply) => {
       const result = createHousehold(fastify.db, request.body);
       reply.status(201).send(result);
+    },
+  );
+
+  app.post(
+    "/mine",
+    {
+      preHandler: fastify.authenticate,
+      schema: {
+        body: createOwnHouseholdBodySchema,
+        response: { 201: createOwnHouseholdResponseSchema },
+      },
+    },
+    async (request, reply) => {
+      const result = createHouseholdForUser(fastify.db, request.auth!.userId, request.body);
+      reply.status(201).send({
+        householdId: result.householdId,
+        invitationToken: result.invitationToken,
+        invitationExpiresAt: result.invitationExpiresAt.toISOString(),
+      });
     },
   );
 

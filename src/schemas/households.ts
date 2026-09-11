@@ -13,6 +13,18 @@ export const createHouseholdResponseSchema = z.object({
 
 export type CreateHouseholdBody = z.infer<typeof createHouseholdBodySchema>;
 
+export const createOwnHouseholdBodySchema = z.object({
+  name: z.string().trim().min(1),
+});
+
+export const createOwnHouseholdResponseSchema = z.object({
+  householdId: z.string(),
+  invitationToken: z.string(),
+  invitationExpiresAt: z.string(),
+});
+
+export type CreateOwnHouseholdBody = z.infer<typeof createOwnHouseholdBodySchema>;
+
 export const createInvitationResponseSchema = z.object({
   token: z.string(),
   expiresAt: z.string(),
