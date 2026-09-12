@@ -3,18 +3,23 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { CreateHouseholdError, createHousehold } from '@/lib/create-household'
+import { HouseholdError, fetchHousehold, fetchHouseholdPreferences } from '@/lib/household'
 
 import { AppHomePage } from './app-home-page'
 
-vi.mock('@/lib/create-household', async () => {
-  const actual = await vi.importActual<typeof import('@/lib/create-household')>(
-    '@/lib/create-household',
-  )
-  return { ...actual, createHousehold: vi.fn() }
+vi.mock('@/lib/household', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/household')>('@/lib/household')
+  return {
+    ...actual,
+    fetchHousehold: vi.fn(),
+    fetchHouseholdPreferences: vi.fn(),
+    createInvitation: vi.fn(),
+    updateHouseholdPreferences: vi.fn(),
+  }
 })
 
-const createHouseholdMock = vi.mocked(createHousehold)
+const fetchHouseholdMock = vi.mocked(fetchHousehold)
+const fetchHouseholdPreferencesMock = vi.mocked(fetchHouseholdPreferences)
 
 function renderAppHomePage() {
   render(
@@ -26,48 +31,37 @@ function renderAppHomePage() {
 
 describe('AppHomePage', () => {
   beforeEach(() => {
-    createHouseholdMock.mockReset()
-    Object.assign(navigator, { clipboard: { writeText: vi.fn().mockResolvedValue(undefined) } })
+    fetchHouseholdMock.mockReset()
+    fetchHouseholdPreferencesMock.mockReset()
+    fetchHouseholdPreferencesMock.mockResolvedValue(null)
   })
 
-  it("affiche l'état vide avec le formulaire de création de foyer", () => {
+  it('affiche le nom du foyer une fois chargé', async () => {
+    fetchHouseholdMock.mockResolvedValue({ householdId: 'h1', name: 'Foyer Dupont' })
     renderAppHomePage()
 
-    expect(screen.getByRole('heading', { name: /bienvenue dans kitchen/i })).toBeInTheDocument()
-    expect(screen.getByLabelText(/nom du foyer/i)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /créer mon foyer/i })).toBeDisabled()
+    expect(await screen.findByRole('heading', { name: 'Foyer Dupont' })).toBeInTheDocument()
   })
 
-  it('crée le foyer via le backend et affiche l\'état de succès avec le lien copiable', async () => {
-    createHouseholdMock.mockResolvedValue({
-      householdId: 'h1',
-      invitationToken: 'tok123',
-      invitationExpiresAt: new Date().toISOString(),
-    })
+  it('affiche une erreur si la récupération du foyer échoue', async () => {
+    fetchHouseholdMock.mockRejectedValue(new HouseholdError('Impossible de récupérer les informations du foyer.'))
     renderAppHomePage()
 
-    await userEvent.type(screen.getByLabelText(/nom du foyer/i), 'Foyer Dupont')
-    await userEvent.click(screen.getByRole('button', { name: /créer mon foyer/i }))
-
-    expect(createHouseholdMock).toHaveBeenCalledWith('Foyer Dupont')
-    expect(await screen.findByRole('heading', { name: /foyer créé/i })).toBeInTheDocument()
-
-    const linkInput = screen.getByLabelText(/^lien d'invitation$/i) as HTMLInputElement
-    expect(linkInput.value).toContain('/rejoindre/tok123')
-
-    await userEvent.click(screen.getByRole('button', { name: /copier le lien d'invitation/i }))
-
-    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(linkInput.value)
-    expect(await screen.findByRole('status')).toHaveTextContent('Lien copié !')
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Impossible de récupérer les informations du foyer.',
+    )
   })
 
-  it("affiche un message d'erreur si la création du foyer échoue", async () => {
-    createHouseholdMock.mockRejectedValue(new CreateHouseholdError('La création du foyer a échoué. Veuillez réessayer.'))
+  it('ouvre le drawer via le bouton menu et le referme avec Escape', async () => {
+    fetchHouseholdMock.mockResolvedValue({ householdId: 'h1', name: 'Foyer Dupont' })
     renderAppHomePage()
 
-    await userEvent.type(screen.getByLabelText(/nom du foyer/i), 'Foyer Dupont')
-    await userEvent.click(screen.getByRole('button', { name: /créer mon foyer/i }))
+    await screen.findByRole('heading', { name: 'Foyer Dupont' })
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('La création du foyer a échoué')
+    await userEvent.click(screen.getByRole('button', { name: /ouvrir le menu/i }))
+    expect(await screen.findByRole('dialog', { name: /menu/i })).toBeInTheDocument()
+
+    await userEvent.keyboard('{Escape}')
+    expect(screen.queryByRole('dialog', { name: /menu/i })).not.toBeInTheDocument()
   })
 })

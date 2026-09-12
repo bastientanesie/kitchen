@@ -50,3 +50,8 @@ export type UpdateHouseholdPreferencesBody = z.infer<
 export const householdPreferencesResponseSchema = z.object({
   preferences: z.string().nullable(),
 });
+
+export const householdSummaryResponseSchema = z.object({
+  householdId: z.string(),
+  name: z.string(),
+});

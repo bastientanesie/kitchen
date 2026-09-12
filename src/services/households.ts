@@ -95,6 +95,19 @@ export function createHouseholdForUser(
   };
 }
 
+export interface HouseholdSummary {
+  householdId: string;
+  name: string;
+}
+
+export function getHouseholdSummary(db: Database.Database, householdId: string): HouseholdSummary {
+  const row = db.prepare("SELECT name FROM households WHERE id = ?").get(householdId) as {
+    name: string;
+  };
+
+  return { householdId, name: row.name };
+}
+
 export function getHouseholdPreferences(
   db: Database.Database,
   householdId: string,

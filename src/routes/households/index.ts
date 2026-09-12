@@ -7,6 +7,7 @@ import {
   createOwnHouseholdBodySchema,
   createOwnHouseholdResponseSchema,
   householdPreferencesResponseSchema,
+  householdSummaryResponseSchema,
   invitationParamsSchema,
   invitationPreviewResponseSchema,
   updateHouseholdPreferencesBodySchema,
@@ -15,6 +16,7 @@ import {
   createHousehold,
   createHouseholdForUser,
   getHouseholdPreferences,
+  getHouseholdSummary,
   updateHouseholdPreferences,
 } from "../../services/households.js";
 import { createInvitation, peekInvitation } from "../../services/invitations.js";
@@ -79,6 +81,19 @@ const householdsRoutes: FastifyPluginAsync = async (fastify) => {
     },
     async (request) => {
       return peekInvitation(fastify.db, request.params.token);
+    },
+  );
+
+  app.get(
+    "/mine",
+    {
+      preHandler: fastify.authenticate,
+      schema: {
+        response: { 200: householdSummaryResponseSchema },
+      },
+    },
+    async (request) => {
+      return getHouseholdSummary(fastify.db, request.auth!.householdId);
     },
   );
 
