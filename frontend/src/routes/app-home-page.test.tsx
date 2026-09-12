@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { HouseholdError, fetchHousehold, fetchHouseholdPreferences } from '@/lib/household'
+import { fetchIngredients } from '@/lib/ingredients'
 
 import { AppHomePage } from './app-home-page'
 
@@ -18,8 +19,18 @@ vi.mock('@/lib/household', async () => {
   }
 })
 
+vi.mock('@/lib/ingredients', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/ingredients')>('@/lib/ingredients')
+  return {
+    ...actual,
+    fetchIngredients: vi.fn(),
+    updateIngredientPresence: vi.fn(),
+  }
+})
+
 const fetchHouseholdMock = vi.mocked(fetchHousehold)
 const fetchHouseholdPreferencesMock = vi.mocked(fetchHouseholdPreferences)
+const fetchIngredientsMock = vi.mocked(fetchIngredients)
 
 function renderAppHomePage() {
   render(
@@ -34,6 +45,8 @@ describe('AppHomePage', () => {
     fetchHouseholdMock.mockReset()
     fetchHouseholdPreferencesMock.mockReset()
     fetchHouseholdPreferencesMock.mockResolvedValue(null)
+    fetchIngredientsMock.mockReset()
+    fetchIngredientsMock.mockResolvedValue([])
   })
 
   it('affiche le nom du foyer une fois chargé', async () => {
@@ -63,5 +76,16 @@ describe('AppHomePage', () => {
 
     await userEvent.keyboard('{Escape}')
     expect(screen.queryByRole('dialog', { name: /menu/i })).not.toBeInTheDocument()
+  })
+
+  it('affiche le stock une fois le foyer chargé', async () => {
+    fetchHouseholdMock.mockResolvedValue({ householdId: 'h1', name: 'Foyer Dupont' })
+    fetchIngredientsMock.mockResolvedValue([
+      { id: '1', name: 'farine', present: true, storage: 'placard' },
+    ])
+    renderAppHomePage()
+
+    await screen.findByRole('heading', { name: 'Foyer Dupont' })
+    expect(await screen.findByText('farine')).toBeInTheDocument()
   })
 })

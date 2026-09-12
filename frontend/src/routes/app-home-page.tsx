@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { HouseholdDrawer } from '@/components/household-drawer'
+import { StockGrid } from '@/components/stock-grid'
 import { HouseholdError, fetchHousehold, type HouseholdSummary } from '@/lib/household'
 
 type LoadState =
@@ -55,9 +56,9 @@ export function AppHomePage() {
           <>
             <section aria-labelledby="stock-heading" className="flex flex-col gap-2">
               <h2 id="stock-heading" className="font-display text-lg font-semibold">
-                Stock
+                Stock actuel
               </h2>
-              <p className="text-sm text-muted-foreground">À venir.</p>
+              <StockGrid />
             </section>
             <section aria-labelledby="cooking-modes-heading" className="flex flex-col gap-2">
               <h2 id="cooking-modes-heading" className="font-display text-lg font-semibold">
