@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { CookingModesSection } from '@/components/cooking-modes-section'
 import { HouseholdDrawer } from '@/components/household-drawer'
 import { StockGrid } from '@/components/stock-grid'
+import { VoiceDictationButton } from '@/components/voice-dictation-button'
 import { HouseholdError, fetchHousehold, type HouseholdSummary } from '@/lib/household'
 
 type LoadState =
@@ -15,6 +16,7 @@ type LoadState =
 export function AppHomePage() {
   const [state, setState] = useState<LoadState>({ status: 'loading' })
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
+  const [stockVersion, setStockVersion] = useState(0)
 
   useEffect(() => {
     let cancelled = false
@@ -59,7 +61,7 @@ export function AppHomePage() {
               <h2 id="stock-heading" className="font-display text-lg font-semibold">
                 Stock actuel
               </h2>
-              <StockGrid />
+              <StockGrid key={stockVersion} />
             </section>
             <section aria-labelledby="cooking-modes-heading" className="flex flex-col gap-2">
               <h2 id="cooking-modes-heading" className="font-display text-lg font-semibold">
@@ -78,6 +80,7 @@ export function AppHomePage() {
           householdName={state.household.name}
         />
       )}
+      <VoiceDictationButton onIngredientsAdded={() => setStockVersion((version) => version + 1)} />
     </div>
   )
 }

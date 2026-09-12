@@ -41,6 +41,7 @@ export const parsedIngredientSchema = z.object({
   name: z.string(),
   present: z.boolean(),
   isNew: z.boolean(),
+  storage: storageSchema,
 });
 
 export const parseTranscriptResponseSchema = z.object({

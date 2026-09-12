@@ -97,8 +97,8 @@ describe("Ingredients parsing (issue #36)", () => {
     });
 
     vi.mocked(callGemini).mockResolvedValueOnce([
-      { name: "Tomate", present: false },
-      { name: "Basilic", present: true },
+      { name: "Tomate", present: false, storage: "frigo" },
+      { name: "Basilic", present: true, storage: "placard" },
     ]);
 
     const response = await app.inject({
@@ -111,8 +111,8 @@ describe("Ingredients parsing (issue #36)", () => {
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual({
       ingredients: [
-        { name: "tomate", present: false, isNew: false },
-        { name: "basilic", present: true, isNew: true },
+        { name: "tomate", present: false, isNew: false, storage: "frigo" },
+        { name: "basilic", present: true, isNew: true, storage: "placard" },
       ],
     });
   });

@@ -1,9 +1,14 @@
 const GEMINI_TIMEOUT_MS = 10_000;
 const GEMINI_MODEL = "gemini-2.5-flash-lite";
 
+const STORAGES = ["frigo", "placard", "congelateur"] as const;
+type GeminiStorage = (typeof STORAGES)[number];
+const DEFAULT_STORAGE: GeminiStorage = "placard";
+
 export interface GeminiIngredient {
   name: string;
   present: boolean;
+  storage: GeminiStorage;
 }
 
 const responseSchema = {
@@ -13,15 +18,18 @@ const responseSchema = {
     properties: {
       name: { type: "STRING" },
       present: { type: "BOOLEAN" },
+      storage: { type: "STRING", enum: STORAGES },
     },
-    required: ["name", "present"],
+    required: ["name", "present", "storage"],
   },
 };
 
 const SYSTEM_PROMPT =
   "Tu extrais une liste d'ingrédients de cuisine à partir d'une dictée vocale en français. " +
-  "Pour chaque ingrédient mentionné, indique son nom (singulier, minuscule) et s'il doit être marqué présent " +
-  "(ajout au stock) ou absent (retrait du stock, ingrédient à racheter). " +
+  "Pour chaque ingrédient mentionné, indique son nom (singulier, minuscule), s'il doit être marqué présent " +
+  "(ajout au stock) ou absent (retrait du stock, ingrédient à racheter), et son lieu de rangement " +
+  "(frigo, placard ou congelateur). Déduis le lieu de rangement de la dictée si elle le mentionne, " +
+  "sinon choisis le plus plausible pour cet ingrédient. " +
   "Si la dictée ne mentionne aucun ingrédient, réponds avec un tableau vide.";
 
 export async function callGemini(
@@ -67,11 +75,14 @@ export async function callGemini(
     }
 
     return parsed.map((item) => {
-      const candidate = item as { name?: unknown; present?: unknown };
+      const candidate = item as { name?: unknown; present?: unknown; storage?: unknown };
       if (typeof candidate.name !== "string" || typeof candidate.present !== "boolean") {
         throw new Error("Réponse Gemini au format inattendu");
       }
-      return { name: candidate.name, present: candidate.present };
+      const storage = STORAGES.includes(candidate.storage as GeminiStorage)
+        ? (candidate.storage as GeminiStorage)
+        : DEFAULT_STORAGE;
+      return { name: candidate.name, present: candidate.present, storage };
     });
   } finally {
     clearTimeout(timeout);

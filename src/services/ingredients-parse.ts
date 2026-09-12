@@ -19,6 +19,7 @@ export function buildParsedIngredients(
       name,
       present: ingredient.present,
       isNew: !existingNames.has(name),
+      storage: ingredient.storage,
     };
   });
 }
