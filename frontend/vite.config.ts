@@ -10,6 +10,21 @@ export default defineConfig({
       '@': path.resolve(import.meta.dirname, './src'),
     },
   },
+  server: {
+    allowedHosts: ['host.docker.internal'],
+    proxy: (() => {
+      const target = process.env.BACKEND_URL ?? 'http://localhost:3000'
+      const prefixes = [
+        '/households',
+        '/auth',
+        '/webauthn',
+        '/device-pairing',
+        '/cooking-modes',
+        '/ingredients',
+      ]
+      return Object.fromEntries(prefixes.map((prefix) => [prefix, target]))
+    })(),
+  },
   test: {
     environment: 'jsdom',
     globals: true,
