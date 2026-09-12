@@ -1,8 +1,9 @@
 import * as Dialog from '@radix-ui/react-dialog'
-import { Check, Copy, Loader2, X } from 'lucide-react'
+import { Check, Copy, Loader2, Smartphone, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
+import { AddDeviceSheet } from '@/components/add-device-sheet'
 import { ThemeToggle } from '@/components/theme-toggle'
 import {
   HouseholdError,
@@ -31,6 +32,7 @@ export function HouseholdDrawer({
   onOpenChange: (open: boolean) => void
   householdName: string
 }) {
+  const [addDeviceOpen, setAddDeviceOpen] = useState(false)
   const [invitation, setInvitation] = useState<InvitationState>({ status: 'idle' })
   const [copied, setCopied] = useState(false)
   const [copyError, setCopyError] = useState<string | null>(null)
@@ -107,108 +109,138 @@ export function HouseholdDrawer({
   }
 
   return (
-    <Dialog.Root open={open} onOpenChange={handleOpenChange}>
-      <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 bg-black/40" />
-        <Dialog.Content
-          className="fixed inset-y-0 right-0 flex w-full max-w-sm flex-col gap-6 overflow-y-auto bg-background p-6 shadow-lg"
-          aria-label="Menu"
-        >
-          <div className="flex items-center justify-between">
-            <Dialog.Title className="font-display text-xl font-bold">Menu</Dialog.Title>
-            <Dialog.Close asChild>
-              <Button variant="ghost" size="icon" aria-label="Fermer le menu">
-                <X className="h-5 w-5" aria-hidden="true" />
-              </Button>
-            </Dialog.Close>
-          </div>
+    <>
+      <Dialog.Root open={open} onOpenChange={handleOpenChange}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 bg-black/40" />
+          <Dialog.Content
+            className="fixed inset-y-0 right-0 flex w-full max-w-sm flex-col gap-6 overflow-y-auto bg-background p-6 shadow-lg"
+            aria-label="Menu"
+          >
+            <div className="flex items-center justify-between">
+              <Dialog.Title className="font-display text-xl font-bold">Menu</Dialog.Title>
+              <Dialog.Close asChild>
+                <Button variant="ghost" size="icon" aria-label="Fermer le menu">
+                  <X className="h-5 w-5" aria-hidden="true" />
+                </Button>
+              </Dialog.Close>
+            </div>
 
-          <section className="flex flex-col gap-2">
-            <h2 className="text-sm font-medium text-muted-foreground">Thème</h2>
-            <ThemeToggle />
-          </section>
+            <section className="flex flex-col gap-2">
+              <h2 className="text-sm font-medium text-muted-foreground">Thème</h2>
+              <ThemeToggle />
+            </section>
 
-          <section className="flex flex-col gap-3">
-            <h2 className="text-sm font-medium text-muted-foreground">Foyer</h2>
-            <p className="font-medium">{householdName}</p>
+            <section className="flex flex-col gap-3">
+              <h2 className="text-sm font-medium text-muted-foreground">Foyer</h2>
+              <p className="font-medium">{householdName}</p>
 
-            {invitation.status === 'ready' ? (
-              <div className="flex w-full items-center gap-2">
-                <input
-                  readOnly
-                  value={invitation.link}
-                  aria-label="Lien d'invitation"
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  onFocus={(event) => event.target.select()}
-                />
+              {invitation.status === 'ready' ? (
+                <div className="flex w-full items-center gap-2">
+                  <input
+                    readOnly
+                    value={invitation.link}
+                    aria-label="Lien d'invitation"
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    onFocus={(event) => event.target.select()}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    aria-label="Copier le lien d'invitation"
+                    onClick={() => handleCopy(invitation.link)}
+                  >
+                    {copied ? (
+                      <Check className="h-4 w-4" aria-hidden="true" />
+                    ) : (
+                      <Copy className="h-4 w-4" aria-hidden="true" />
+                    )}
+                  </Button>
+                </div>
+              ) : (
                 <Button
                   type="button"
                   variant="outline"
-                  size="icon"
-                  aria-label="Copier le lien d'invitation"
-                  onClick={() => handleCopy(invitation.link)}
+                  onClick={handleGenerateInvitation}
+                  disabled={invitation.status === 'pending'}
                 >
-                  {copied ? (
-                    <Check className="h-4 w-4" aria-hidden="true" />
-                  ) : (
-                    <Copy className="h-4 w-4" aria-hidden="true" />
+                  {invitation.status === 'pending' && (
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
                   )}
+                  Générer un lien d'invitation
                 </Button>
-              </div>
-            ) : (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleGenerateInvitation}
-                disabled={invitation.status === 'pending'}
-              >
-                {invitation.status === 'pending' && (
-                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                )}
-                Générer un lien d'invitation
-              </Button>
-            )}
-            {invitation.status === 'error' && (
-              <p role="alert" className="text-sm text-destructive">
-                {invitation.message}
-              </p>
-            )}
-            {copyError && (
-              <p role="alert" className="text-sm text-destructive">
-                {copyError}
-              </p>
-            )}
-          </section>
+              )}
+              {invitation.status === 'error' && (
+                <p role="alert" className="text-sm text-destructive">
+                  {invitation.message}
+                </p>
+              )}
+              {copyError && (
+                <p role="alert" className="text-sm text-destructive">
+                  {copyError}
+                </p>
+              )}
+            </section>
 
-          <section className="flex flex-col gap-2">
-            <label htmlFor="household-preferences" className="text-sm font-medium text-muted-foreground">
-              Préférences du foyer
-            </label>
-            {preferences.status === 'loading' ? (
-              <p className="text-sm text-muted-foreground">Chargement…</p>
-            ) : (
-              <textarea
-                id="household-preferences"
-                className="min-h-24 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                value={preferences.status === 'ready' ? preferences.value : ''}
-                onChange={(event) =>
-                  setPreferences({ status: 'ready', value: event.target.value })
-                }
-                onBlur={(event) => savePreferencesIfChanged(event.target.value)}
-                placeholder="Allergies, régimes, habitudes du foyer…"
-              />
-            )}
-            {isSavingPreferences && (
-              <p className="text-sm text-muted-foreground">Enregistrement…</p>
-            )}
-            {preferences.status === 'error' && (
-              <p role="alert" className="text-sm text-destructive">
-                {preferences.message}
-              </p>
-            )}
-          </section>
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
+            <section className="flex flex-col gap-2">
+              <h2 className="text-sm font-medium text-muted-foreground">Appareils</h2>
+              <Button type="button" variant="outline" onClick={() => setAddDeviceOpen(true)}>
+                <Smartphone className="h-4 w-4" aria-hidden="true" />
+                Ajouter un appareil
+              </Button>
+            </section>
+
+            <section className="flex flex-col gap-2">
+              <label htmlFor="household-preferences" className="text-sm font-medium text-muted-foreground">
+                Préférences du foyer
+              </label>
+              {preferences.status === 'loading' ? (
+                <p className="text-sm text-muted-foreground">Chargement…</p>
+              ) : (
+                <textarea
+                  id="household-preferences"
+                  className="min-h-24 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  value={preferences.status === 'ready' ? preferences.value : ''}
+                  onChange={(event) =>
+                    setPreferences({ status: 'ready', value: event.target.value })
+                  }
+                  onBlur={(event) => savePreferencesIfChanged(event.target.value)}
+                  placeholder="Allergies, régimes, habitudes du foyer…"
+                />
+              )}
+              {isSavingPreferences && (
+                <p className="text-sm text-muted-foreground">Enregistrement…</p>
+              )}
+              {preferences.status === 'error' && (
+                <p role="alert" className="text-sm text-destructive">
+                  {preferences.message}
+                </p>
+              )}
+            </section>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
+
+      <Dialog.Root open={addDeviceOpen} onOpenChange={setAddDeviceOpen}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 bg-black/40" />
+          <Dialog.Content
+            className="fixed inset-x-0 bottom-0 flex max-h-[85vh] flex-col gap-4 overflow-y-auto rounded-t-xl bg-background p-6 shadow-lg"
+            aria-label="Ajouter un appareil"
+          >
+            <div className="flex items-center justify-between">
+              <Dialog.Title className="font-display text-lg font-bold">Ajouter un appareil</Dialog.Title>
+              <Dialog.Close asChild>
+                <Button variant="ghost" size="icon" aria-label="Fermer">
+                  <X className="h-5 w-5" aria-hidden="true" />
+                </Button>
+              </Dialog.Close>
+            </div>
+            <AddDeviceSheet />
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
+    </>
   )
 }

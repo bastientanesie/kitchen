@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createInvitation, fetchHouseholdPreferences, updateHouseholdPreferences } from '@/lib/household'
+import { createDeviceLinkToken, subscribeToDeviceLinkEvents } from '@/lib/device-pairing'
 import { ThemeProvider } from '@/components/theme-provider'
 
 import { HouseholdDrawer } from './household-drawer'
@@ -25,9 +26,16 @@ vi.mock('@/lib/household', async () => {
   }
 })
 
+vi.mock('@/lib/device-pairing', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/device-pairing')>('@/lib/device-pairing')
+  return { ...actual, createDeviceLinkToken: vi.fn(), subscribeToDeviceLinkEvents: vi.fn() }
+})
+
 const createInvitationMock = vi.mocked(createInvitation)
 const fetchHouseholdPreferencesMock = vi.mocked(fetchHouseholdPreferences)
 const updateHouseholdPreferencesMock = vi.mocked(updateHouseholdPreferences)
+const createDeviceLinkTokenMock = vi.mocked(createDeviceLinkToken)
+const subscribeToDeviceLinkEventsMock = vi.mocked(subscribeToDeviceLinkEvents)
 
 describe('HouseholdDrawer', () => {
   beforeEach(() => {
@@ -35,6 +43,9 @@ describe('HouseholdDrawer', () => {
     fetchHouseholdPreferencesMock.mockReset()
     updateHouseholdPreferencesMock.mockReset()
     fetchHouseholdPreferencesMock.mockResolvedValue(null)
+    createDeviceLinkTokenMock.mockReset()
+    subscribeToDeviceLinkEventsMock.mockReset()
+    subscribeToDeviceLinkEventsMock.mockReturnValue(vi.fn())
     Object.assign(navigator, { clipboard: { writeText: vi.fn().mockResolvedValue(undefined) } })
   })
 
@@ -100,6 +111,19 @@ describe('HouseholdDrawer', () => {
 
     expect(updateHouseholdPreferencesMock).toHaveBeenCalledWith('Sans gluten, végétarien')
     expect(onOpenChange).toHaveBeenCalledWith(false)
+  })
+
+  it("ouvre la feuille d'ajout d'appareil et affiche son code d'appairage", async () => {
+    createDeviceLinkTokenMock.mockResolvedValue({
+      code: 'ABCD1234',
+      link: 'https://example.test/appareils/associer/ABCD1234',
+      expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+    })
+    renderDrawer({ open: true, onOpenChange: vi.fn(), householdName: 'Foyer Dupont' })
+
+    await userEvent.click(screen.getByRole('button', { name: /ajouter un appareil/i }))
+
+    expect(await screen.findByText('ABCD1234')).toBeInTheDocument()
   })
 
   it('permet de naviguer le sélecteur de thème au clavier', async () => {
