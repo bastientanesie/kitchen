@@ -2,6 +2,7 @@ import { Menu } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
+import { CookingModesSection } from '@/components/cooking-modes-section'
 import { HouseholdDrawer } from '@/components/household-drawer'
 import { StockGrid } from '@/components/stock-grid'
 import { HouseholdError, fetchHousehold, type HouseholdSummary } from '@/lib/household'
@@ -64,7 +65,7 @@ export function AppHomePage() {
               <h2 id="cooking-modes-heading" className="font-display text-lg font-semibold">
                 Modes de cuisson
               </h2>
-              <p className="text-sm text-muted-foreground">À venir.</p>
+              <CookingModesSection />
             </section>
           </>
         )}

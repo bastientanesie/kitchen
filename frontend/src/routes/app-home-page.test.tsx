@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { fetchCookingModes } from '@/lib/cooking-modes'
 import { HouseholdError, fetchHousehold, fetchHouseholdPreferences } from '@/lib/household'
 import { fetchIngredients } from '@/lib/ingredients'
 
@@ -28,9 +29,20 @@ vi.mock('@/lib/ingredients', async () => {
   }
 })
 
+vi.mock('@/lib/cooking-modes', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/cooking-modes')>('@/lib/cooking-modes')
+  return {
+    ...actual,
+    fetchCookingModes: vi.fn(),
+    updateCookingModePresence: vi.fn(),
+    createCookingMode: vi.fn(),
+  }
+})
+
 const fetchHouseholdMock = vi.mocked(fetchHousehold)
 const fetchHouseholdPreferencesMock = vi.mocked(fetchHouseholdPreferences)
 const fetchIngredientsMock = vi.mocked(fetchIngredients)
+const fetchCookingModesMock = vi.mocked(fetchCookingModes)
 
 function renderAppHomePage() {
   render(
@@ -47,6 +59,8 @@ describe('AppHomePage', () => {
     fetchHouseholdPreferencesMock.mockResolvedValue(null)
     fetchIngredientsMock.mockReset()
     fetchIngredientsMock.mockResolvedValue([])
+    fetchCookingModesMock.mockReset()
+    fetchCookingModesMock.mockResolvedValue([])
   })
 
   it('affiche le nom du foyer une fois chargé', async () => {
@@ -87,5 +101,14 @@ describe('AppHomePage', () => {
 
     await screen.findByRole('heading', { name: 'Foyer Dupont' })
     expect(await screen.findByText('farine')).toBeInTheDocument()
+  })
+
+  it('affiche les modes de cuisson une fois le foyer chargé', async () => {
+    fetchHouseholdMock.mockResolvedValue({ householdId: 'h1', name: 'Foyer Dupont' })
+    fetchCookingModesMock.mockResolvedValue([{ id: '1', name: 'casserole', present: true }])
+    renderAppHomePage()
+
+    await screen.findByRole('heading', { name: 'Foyer Dupont' })
+    expect(await screen.findByText('casserole')).toBeInTheDocument()
   })
 })
