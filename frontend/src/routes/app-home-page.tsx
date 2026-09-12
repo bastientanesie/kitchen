@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { CookingModesSection } from '@/components/cooking-modes-section'
 import { HouseholdDrawer } from '@/components/household-drawer'
+import { PromptGenerationButton } from '@/components/prompt-generation-button'
 import { StockGrid } from '@/components/stock-grid'
 import { VoiceDictationButton } from '@/components/voice-dictation-button'
 import { HouseholdError, fetchHousehold, type HouseholdSummary } from '@/lib/household'
@@ -81,6 +82,7 @@ export function AppHomePage() {
         />
       )}
       <VoiceDictationButton onIngredientsAdded={() => setStockVersion((version) => version + 1)} />
+      <PromptGenerationButton onEditPreferences={() => setIsDrawerOpen(true)} />
     </div>
   )
 }
