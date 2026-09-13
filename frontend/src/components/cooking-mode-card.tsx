@@ -25,8 +25,8 @@ export function CookingModeCard({
         className={cn(
           'inline-flex h-11 min-w-[6.5rem] items-center justify-center gap-1.5 rounded-md px-3 text-sm font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
           cookingMode.present
-            ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-            : 'border border-input bg-background hover:bg-accent hover:text-accent-foreground',
+            ? 'bg-present text-present-foreground hover:bg-present/90'
+            : 'bg-absent text-absent-foreground hover:bg-absent/90',
         )}
       >
         {cookingMode.present ? 'Présent' : 'Absent'}

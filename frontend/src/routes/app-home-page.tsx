@@ -50,7 +50,7 @@ export function AppHomePage() {
         </Button>
       </header>
 
-      <main className="flex flex-1 flex-col gap-6 p-4">
+      <main className="flex flex-1 flex-col gap-6 p-4 pb-24">
         {state.status === 'error' && (
           <p role="alert" className="text-sm text-destructive">
             {state.message}
