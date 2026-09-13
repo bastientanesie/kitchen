@@ -1,5 +1,6 @@
 import { Check, Copy, Loader2, PlusCircle } from 'lucide-react'
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 
 import { Button } from '@/components/ui/button'
 import { CreateHouseholdError, createHousehold } from '@/lib/create-household'
@@ -88,6 +89,9 @@ export function CreateHouseholdPage() {
             {error}
           </p>
         )}
+        <Button asChild size="lg">
+          <Link to="/app">Accéder à mon foyer</Link>
+        </Button>
       </main>
     )
   }
