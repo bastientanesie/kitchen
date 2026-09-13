@@ -5,6 +5,7 @@ RUN npm ci
 COPY tsconfig.json ./
 COPY src ./src
 RUN npm run build
+RUN mkdir -p dist/db/migrations && cp src/db/migrations/*.sql dist/db/migrations/
 
 FROM node:22-alpine AS runtime
 WORKDIR /app
