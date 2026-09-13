@@ -82,6 +82,42 @@ async function createCredential(
   }
 }
 
+async function fetchEnrollmentRegistrationOptions(
+  enrollmentToken: string,
+  displayName: string,
+): Promise<PublicKeyCredentialCreationOptionsJSON> {
+  const response = await fetch('/auth/webauthn/register/options', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ enrollmentToken, displayName }),
+  })
+  return parseInvitationResponse(response, "Impossible de récupérer les options d'inscription")
+}
+
+async function verifyEnrollmentRegistration(
+  enrollmentToken: string,
+  credential: RegistrationResponseJSON,
+): Promise<RegisterResult> {
+  const response = await fetch('/auth/webauthn/register/verify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ enrollmentToken, credential, deviceName: 'Cet appareil' }),
+  })
+  return parseInvitationResponse(response, "Échec de la vérification de l'inscription")
+}
+
+export async function registerHouseholdOwner(
+  enrollmentToken: string,
+  displayName: string,
+): Promise<RegisterResult> {
+  const optionsJSON = await fetchEnrollmentRegistrationOptions(enrollmentToken, displayName)
+
+  const credential = await createCredential(optionsJSON)
+
+  return verifyEnrollmentRegistration(enrollmentToken, credential)
+}
+
 async function parseDeviceLinkResponse<T>(response: Response, failureMessage: string): Promise<T> {
   if (response.status === 410) {
     throw new DeviceLinkExpiredError("Ce jeton d'appairage a expiré ou est invalide.")

@@ -35,10 +35,11 @@ describe('CreateHouseholdPage', () => {
 
     expect(screen.getByRole('heading', { name: /bienvenue dans kitchen/i })).toBeInTheDocument()
     expect(screen.getByLabelText(/nom du foyer/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/votre nom d'affichage/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /créer mon foyer/i })).toBeDisabled()
   })
 
-  it('crée le foyer via le backend et affiche l\'état de succès avec le lien copiable', async () => {
+  it('crée le foyer (et la passkey) via le backend et affiche l\'état de succès avec le lien copiable', async () => {
     createHouseholdMock.mockResolvedValue({
       householdId: 'h1',
       invitationToken: 'tok123',
@@ -47,9 +48,10 @@ describe('CreateHouseholdPage', () => {
     renderCreateHouseholdPage()
 
     await userEvent.type(screen.getByLabelText(/nom du foyer/i), 'Foyer Dupont')
+    await userEvent.type(screen.getByLabelText(/votre nom d'affichage/i), 'Sam')
     await userEvent.click(screen.getByRole('button', { name: /créer mon foyer/i }))
 
-    expect(createHouseholdMock).toHaveBeenCalledWith('Foyer Dupont')
+    expect(createHouseholdMock).toHaveBeenCalledWith('Foyer Dupont', 'Sam')
     expect(await screen.findByRole('heading', { name: /foyer créé/i })).toBeInTheDocument()
 
     const linkInput = screen.getByLabelText(/^lien d'invitation$/i) as HTMLInputElement
@@ -66,6 +68,7 @@ describe('CreateHouseholdPage', () => {
     renderCreateHouseholdPage()
 
     await userEvent.type(screen.getByLabelText(/nom du foyer/i), 'Foyer Dupont')
+    await userEvent.type(screen.getByLabelText(/votre nom d'affichage/i), 'Sam')
     await userEvent.click(screen.getByRole('button', { name: /créer mon foyer/i }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent('La création du foyer a échoué')

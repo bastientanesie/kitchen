@@ -1,3 +1,5 @@
+import { registerHouseholdOwner } from '@/lib/webauthn-register'
+
 export class CreateHouseholdError extends Error {}
 
 export type CreateHouseholdResult = {
@@ -6,19 +8,16 @@ export type CreateHouseholdResult = {
   invitationExpiresAt: string
 }
 
-export async function createHousehold(name: string): Promise<CreateHouseholdResult> {
-  const response = await fetch('/households/mine', {
+async function bootstrapHousehold(
+  name: string,
+  displayName: string,
+): Promise<{ userId: string; householdId: string; enrollmentToken: string }> {
+  const response = await fetch('/households', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body: JSON.stringify({ name }),
+    body: JSON.stringify({ name, displayName }),
   })
 
-  if (response.status === 409) {
-    throw new CreateHouseholdError(
-      'Vous ne pouvez pas créer un nouveau foyer tant que d\'autres membres font partie du vôtre.',
-    )
-  }
   if (!response.ok) {
     throw new CreateHouseholdError('La création du foyer a échoué. Veuillez réessayer.')
   }
@@ -26,6 +25,28 @@ export async function createHousehold(name: string): Promise<CreateHouseholdResu
   return response.json()
 }
 
-export function invitationUrl(token: string): string {
-  return `${window.location.origin}/rejoindre/${token}`
+async function createInvitationForOwnHousehold(): Promise<{ token: string; expiresAt: string }> {
+  const response = await fetch('/households/invitations', {
+    method: 'POST',
+    credentials: 'include',
+  })
+
+  if (!response.ok) {
+    throw new CreateHouseholdError("La génération du lien d'invitation a échoué. Veuillez réessayer.")
+  }
+
+  return response.json()
+}
+
+export async function createHousehold(
+  name: string,
+  displayName: string,
+): Promise<CreateHouseholdResult> {
+  const { householdId, enrollmentToken } = await bootstrapHousehold(name, displayName)
+
+  await registerHouseholdOwner(enrollmentToken, displayName)
+
+  const { token, expiresAt } = await createInvitationForOwnHousehold()
+
+  return { householdId, invitationToken: token, invitationExpiresAt: expiresAt }
 }

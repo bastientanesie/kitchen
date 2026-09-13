@@ -2,7 +2,9 @@ import { Check, Copy, Loader2, PlusCircle } from 'lucide-react'
 import { useState } from 'react'
 
 import { Button } from '@/components/ui/button'
-import { CreateHouseholdError, createHousehold, invitationUrl } from '@/lib/create-household'
+import { CreateHouseholdError, createHousehold } from '@/lib/create-household'
+import { invitationUrl } from '@/lib/invitation'
+import { RegistrationCancelledError } from '@/lib/webauthn-register'
 
 type CreateState =
   | { status: 'idle' }
@@ -10,6 +12,7 @@ type CreateState =
 
 export function CreateHouseholdPage() {
   const [name, setName] = useState('')
+  const [displayName, setDisplayName] = useState('')
   const [isPending, setIsPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [createState, setCreateState] = useState<CreateState>({ status: 'idle' })
@@ -21,13 +24,15 @@ export function CreateHouseholdPage() {
     setError(null)
 
     try {
-      const result = await createHousehold(name.trim())
+      const result = await createHousehold(name.trim(), displayName.trim())
       setCreateState({ status: 'success', link: invitationUrl(result.invitationToken) })
     } catch (err) {
       setError(
-        err instanceof CreateHouseholdError
+        err instanceof RegistrationCancelledError
           ? err.message
-          : 'La création du foyer a échoué. Veuillez réessayer.',
+          : err instanceof CreateHouseholdError
+            ? err.message
+            : 'La création du foyer a échoué. Veuillez réessayer.',
       )
     } finally {
       setIsPending(false)
@@ -107,7 +112,24 @@ export function CreateHouseholdPage() {
           className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
           placeholder="Ex : Foyer Dupont"
         />
-        <Button type="submit" size="lg" disabled={isPending || name.trim().length === 0}>
+        <label htmlFor="display-name" className="text-sm font-medium">
+          Votre nom d'affichage <span aria-hidden="true">*</span>
+        </label>
+        <input
+          id="display-name"
+          type="text"
+          required
+          aria-required="true"
+          value={displayName}
+          onChange={(event) => setDisplayName(event.target.value)}
+          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+          placeholder="Votre nom"
+        />
+        <Button
+          type="submit"
+          size="lg"
+          disabled={isPending || name.trim().length === 0 || displayName.trim().length === 0}
+        >
           {isPending ? (
             <Loader2 className="mr-2 h-5 w-5 animate-spin" aria-hidden="true" />
           ) : (

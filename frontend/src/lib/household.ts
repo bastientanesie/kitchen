@@ -1,4 +1,4 @@
-import { invitationUrl } from '@/lib/create-household'
+import { invitationUrl } from '@/lib/invitation'
 
 export class HouseholdError extends Error {}
 
