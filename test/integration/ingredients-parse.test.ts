@@ -25,9 +25,13 @@ vi.mock("@simplewebauthn/server", async () => {
   };
 });
 
-vi.mock("../../src/services/gemini-client.js", () => ({
-  callGemini: vi.fn(),
-}));
+vi.mock("../../src/services/gemini-client.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../src/services/gemini-client.js")>();
+  return {
+    ...actual,
+    callGemini: vi.fn(),
+  };
+});
 
 async function registerHousehold(app: FastifyInstance, name: string, displayName: string) {
   const householdResponse = await app.inject({

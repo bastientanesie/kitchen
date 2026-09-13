@@ -43,6 +43,11 @@ export async function buildApp(
 
   fastify.setErrorHandler((error: FastifyError | AppError, request, reply) => {
     if (error instanceof AppError) {
+      if (error.status >= 500) {
+        request.log.error({ err: error, cause: error.cause }, error.message);
+      } else {
+        request.log.warn({ err: error, cause: error.cause }, error.message);
+      }
       reply
         .status(error.status)
         .type("application/problem+json")
