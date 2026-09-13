@@ -134,4 +134,40 @@ describe("purgeExpired (issue #32)", () => {
       db.prepare("SELECT token_hash FROM invitations WHERE token_hash = 'consumed'").get(),
     ).toBeUndefined();
   });
+
+  it("deletes a live webauthn challenge, enrollment token, device-link token, and session referencing a purged orphaned user, avoiding a foreign key violation", () => {
+    const householdId = insertHousehold(db);
+    const orphanId = insertUser(db, householdId, new Date(Date.now() - 2 * HOUR_MS));
+    const now = new Date().toISOString();
+    const future = new Date(Date.now() + HOUR_MS).toISOString();
+
+    db.prepare(
+      "INSERT INTO webauthn_challenges (id, challenge, user_id, expires_at, created_at) VALUES ('live', 'c', ?, ?, ?)",
+    ).run(orphanId, future, now);
+    db.prepare(
+      "INSERT INTO enrollment_tokens (token_hash, user_id, expires_at, created_at) VALUES ('live', ?, ?, ?)",
+    ).run(orphanId, future, now);
+    db.prepare(
+      "INSERT INTO device_link_tokens (token_hash, user_id, expires_at, used_at, device_name, created_at) VALUES ('live', ?, ?, NULL, NULL, ?)",
+    ).run(orphanId, future, now);
+    db.prepare(
+      "INSERT INTO sessions (id, user_id, created_at, expires_at, last_seen_at) VALUES (?, ?, ?, ?, ?)",
+    ).run(generateId(), orphanId, now, future, now);
+
+    expect(() => purgeExpired(db)).not.toThrow();
+
+    expect(db.prepare("SELECT id FROM users WHERE id = ?").get(orphanId)).toBeUndefined();
+    expect(
+      db.prepare("SELECT id FROM webauthn_challenges WHERE id = 'live'").get(),
+    ).toBeUndefined();
+    expect(
+      db.prepare("SELECT token_hash FROM enrollment_tokens WHERE token_hash = 'live'").get(),
+    ).toBeUndefined();
+    expect(
+      db.prepare("SELECT token_hash FROM device_link_tokens WHERE token_hash = 'live'").get(),
+    ).toBeUndefined();
+    expect(
+      db.prepare("SELECT id FROM sessions WHERE user_id = ?").get(orphanId),
+    ).toBeUndefined();
+  });
 });

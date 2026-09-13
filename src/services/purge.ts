@@ -16,6 +16,26 @@ export function purgeExpired(db: Database.Database): void {
       )`,
     ).run(orphanCutoffIso);
     db.prepare(
+      `DELETE FROM webauthn_challenges WHERE user_id IN (
+        SELECT id FROM users WHERE created_at < ? AND id NOT IN (SELECT user_id FROM credentials)
+      )`,
+    ).run(orphanCutoffIso);
+    db.prepare(
+      `DELETE FROM enrollment_tokens WHERE user_id IN (
+        SELECT id FROM users WHERE created_at < ? AND id NOT IN (SELECT user_id FROM credentials)
+      )`,
+    ).run(orphanCutoffIso);
+    db.prepare(
+      `DELETE FROM device_link_tokens WHERE user_id IN (
+        SELECT id FROM users WHERE created_at < ? AND id NOT IN (SELECT user_id FROM credentials)
+      )`,
+    ).run(orphanCutoffIso);
+    db.prepare(
+      `DELETE FROM sessions WHERE user_id IN (
+        SELECT id FROM users WHERE created_at < ? AND id NOT IN (SELECT user_id FROM credentials)
+      )`,
+    ).run(orphanCutoffIso);
+    db.prepare(
       "DELETE FROM users WHERE created_at < ? AND id NOT IN (SELECT user_id FROM credentials)",
     ).run(orphanCutoffIso);
   })();
