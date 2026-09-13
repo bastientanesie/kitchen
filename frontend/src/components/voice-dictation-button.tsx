@@ -22,9 +22,9 @@ export function VoiceDictationButton({ onIngredientsAdded }: { onIngredientsAdde
         </Button>
       </Dialog.Trigger>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 bg-black/40" />
+        <Dialog.Overlay className="fixed inset-0 z-20 bg-black/40" />
         <Dialog.Content
-          className="fixed inset-x-0 bottom-0 flex max-h-[85vh] flex-col gap-4 overflow-y-auto rounded-t-xl bg-background p-6 shadow-lg"
+          className="fixed inset-x-0 bottom-0 z-20 flex max-h-[85vh] flex-col gap-4 overflow-y-auto rounded-t-xl bg-background p-6 shadow-lg"
           aria-label="Dicter des ingrédients"
         >
           <div className="flex items-center justify-between">

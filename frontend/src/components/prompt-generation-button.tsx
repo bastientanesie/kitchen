@@ -87,9 +87,9 @@ export function PromptGenerationButton({ onEditPreferences }: { onEditPreference
         </Button>
       </Dialog.Trigger>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 bg-black/40" />
+        <Dialog.Overlay className="fixed inset-0 z-20 bg-black/40" />
         <Dialog.Content
-          className="fixed top-1/2 left-1/2 flex max-h-[85vh] w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 flex-col gap-4 overflow-y-auto rounded-xl bg-background p-6 shadow-lg"
+          className="fixed top-1/2 left-1/2 z-20 flex max-h-[85vh] w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 flex-col gap-4 overflow-y-auto rounded-xl bg-background p-6 shadow-lg"
           aria-label="Générer des recettes"
         >
           <div className="flex items-center justify-between">

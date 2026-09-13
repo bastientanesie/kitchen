@@ -112,9 +112,9 @@ export function HouseholdDrawer({
     <>
       <Dialog.Root open={open} onOpenChange={handleOpenChange}>
         <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 bg-black/40" />
+          <Dialog.Overlay className="fixed inset-0 z-20 bg-black/40" />
           <Dialog.Content
-            className="fixed inset-y-0 right-0 flex w-full max-w-sm flex-col gap-6 overflow-y-auto bg-background p-6 shadow-lg"
+            className="fixed inset-y-0 right-0 z-20 flex w-full max-w-sm flex-col gap-6 overflow-y-auto bg-background p-6 shadow-lg"
             aria-label="Menu"
           >
             <div className="flex items-center justify-between">
@@ -224,9 +224,9 @@ export function HouseholdDrawer({
 
       <Dialog.Root open={addDeviceOpen} onOpenChange={setAddDeviceOpen}>
         <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 bg-black/40" />
+          <Dialog.Overlay className="fixed inset-0 z-20 bg-black/40" />
           <Dialog.Content
-            className="fixed inset-x-0 bottom-0 flex max-h-[85vh] flex-col gap-4 overflow-y-auto rounded-t-xl bg-background p-6 shadow-lg"
+            className="fixed inset-x-0 bottom-0 z-20 flex max-h-[85vh] flex-col gap-4 overflow-y-auto rounded-t-xl bg-background p-6 shadow-lg"
             aria-label="Ajouter un appareil"
           >
             <div className="flex items-center justify-between">
