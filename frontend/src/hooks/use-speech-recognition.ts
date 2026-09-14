@@ -58,11 +58,22 @@ export function useSpeechRecognition() {
     recognition.interimResults = true
 
     recognition.onresult = (event) => {
-      let nextTranscript = ''
+      let finalTranscript = ''
+      let interimTranscript = ''
+      let previousFinalSegment = ''
       for (let i = 0; i < event.results.length; i += 1) {
-        nextTranscript += event.results[i][0].transcript
+        const result = event.results[i]
+        const segment = result[0].transcript
+        if (result.isFinal) {
+          if (segment.trim() !== previousFinalSegment.trim()) {
+            finalTranscript += segment
+          }
+          previousFinalSegment = segment
+        } else {
+          interimTranscript += segment
+        }
       }
-      setTranscript(nextTranscript)
+      setTranscript(finalTranscript + interimTranscript)
     }
 
     recognition.onerror = () => {
